@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 浅色（默认）。深色在 values-night/colors.xml，靠 configuration.uiMode 切换。 -->
+<resources>
+    <color name="bg">#F4F6F8</color>
+    <color name="card">#FFFFFF</color>
+    <color name="card2">#EDF1F5</color>
+    <color name="brand">#0A8F69</color>
+    <color name="brand_dim">#087A59</color>
+    <color name="text">#16202A</color>
+    <color name="dim">#5B6B7A</color>
+    <color name="danger">#C93B33</color>
+    <color name="warn">#B7791F</color>
+    <color name="line">#D8E0E8</color>
+    <!-- 品牌色底上的文字：两套主题都保持深色，保证对比度 -->
+    <color name="on_brand">#04211A</color>
+</resources>

@@ -1,0 +1,23 @@
+# Gradle / Android 构建产物
+.gradle/
+.kotlin/
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 本机路径与 IDE 配置
+local.properties
+*.iml
+.idea/
+.DS_Store
+
+# 签名材料（绝不入库）
+*.jks
+*.keystore
+keystore.properties
+
+# 日志与临时文件
+*.log
+*.hprof

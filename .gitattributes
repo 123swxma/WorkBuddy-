@@ -1,0 +1,10 @@
+# 统一换行符：源码一律 LF，Windows 脚本保持 CRLF，二进制不动
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+gradlew text eol=lf
+
+*.jar binary
+*.png binary
+*.apk binary

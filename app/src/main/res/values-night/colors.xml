@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 深色主题值。与 values/colors.xml 同名，由 uiMode=night 选择。 -->
+<resources>
+    <color name="bg">#0E1418</color>
+    <color name="card">#17212B</color>
+    <color name="card2">#1F2C38</color>
+    <color name="brand">#0DBD8B</color>
+    <color name="brand_dim">#0A8F69</color>
+    <color name="text">#E6EDF3</color>
+    <color name="dim">#8B9BA8</color>
+    <color name="danger">#E5534B</color>
+    <color name="warn">#D29922</color>
+    <color name="line">#24323E</color>
+    <color name="on_brand">#04211A</color>
+</resources>

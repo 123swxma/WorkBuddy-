@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WorkBuddy 反代</string>
+    <string name="login_title">登录 WorkBuddy</string>
+    <string name="console_title">控制台</string>
+    <string name="settings_title">设置</string>
+    <string name="svc_channel_name">反代服务</string>
+    <string name="svc_running">反代运行中</string>
+    <string name="svc_stopped">反代已停止</string>
+    <string name="btn_start">启动服务</string>
+    <string name="btn_stop">停止服务</string>
+</resources>
