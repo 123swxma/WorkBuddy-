@@ -8,7 +8,7 @@
 
 ## 安装
 
-去 [Releases](https://github.com/123swxma/WorkBuddy-/releases) 下 apk 直接装。签名用的是 debug 证书，系统会提示，允许就行。
+ [Releases](https://github.com/123swxma/WorkBuddy-/releases)
 
 ## 怎么用
 
