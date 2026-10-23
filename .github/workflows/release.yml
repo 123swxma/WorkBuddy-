@@ -50,6 +50,27 @@ jobs:
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "resolved versionName=$NAME versionCode=$CODE"
 
+      # 有 Secrets 就用正式签名；没配就退回 debug 签名，CI 不会因为缺密钥而失败
+      - name: Restore signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > wbuddy-release.jks
+            {
+              echo "storeFile=wbuddy-release.jks"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > keystore.properties
+            echo "已写入正式签名配置"
+          else
+            echo "未配置签名 Secrets，本次使用 debug 签名"
+          fi
+
       - name: Build release APK
         run: ./gradlew --no-daemon --stacktrace assembleRelease
 
