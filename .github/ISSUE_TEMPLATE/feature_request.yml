@@ -1,0 +1,28 @@
+name: Feature request
+description: 想要的新能力
+title: '[feat] '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到什么问题
+      description: 说场景，不要一上来就给方案
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你希望它怎么表现
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 现在的绕行办法
+      description: 如果有，写出来；这能看出需求有多痛
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 约束确认
+      options:
+        - label: 这个需求不需要引入第三方依赖
+          required: true

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用问题 / 配置求助
+    url: https://github.com/USERNAME/WorkBuddyProxy/discussions
+    about: 装不上、连不通、客户端怎么填，先到 Discussions，别占 Issue。

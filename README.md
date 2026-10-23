@@ -1,44 +1,27 @@
 # WorkBuddy 反代（Android 版）
 
-把 WorkBuddy 账号池封装成本机 HTTP 接口，跑在手机上，对外提供 **OpenAI Chat Completions** 与 **Anthropic Messages** 两种协议。原生 Kotlin 实现，零第三方依赖，APK 约 830 KB。手机自己就能当网关：同一 Wi-Fi 下的电脑、平板、其他设备直接连手机，不用再开一台常驻电脑。
+[![build](../../actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![minSdk](https://img.shields.io/badge/minSdk-24%20%2F%20Android%207.0-blue)
+![deps](https://img.shields.io/badge/runtime%20deps-0-success)
 
-参考实现：[ardeyouxipianyi/workbuddy2api-hub](https://github.com/ardeyouxipianyi/workbuddy2api-hub)（Python 桌面网关）。本项目按它的抓包结论重写了移动端内核，协议参数与身份头逐项对齐，但**没有沿用 Python 运行时**——原生 Kotlin，零第三方依赖，APK 约 780 KB。
+把 WorkBuddy 账号池封装成本机 HTTP 接口，跑在手机上，对外提供 **OpenAI Chat Completions** 与 **Anthropic Messages** 两种协议。原生 Kotlin 实现，零第三方依赖，APK 约 780 KB。手机自己就能当网关：同一 Wi-Fi 下的电脑、平板、其他设备直接连手机，不用再开一台常驻电脑。
+
+参考实现：[ardeyouxipianyi/workbuddy2api-hub](https://github.com/ardeyouxipianyi/workbuddy2api-hub)（Python 桌面网关）。本项目按它的抓包结论重写了移动端内核，协议参数与身份头逐项对齐，但**没有沿用 Python 运行时**——原生 Kotlin 重写，仍然零第三方依赖。
 
 ---
 
 ## 一、安装
 
-安装包：[WorkBuddyProxy-1.9.1.apk](dist/WorkBuddyProxy-1.9.1.apk)
+安装包：[Releases](../../releases/latest) —— 下载最新一条里的 `WorkBuddyProxy-<版本>.apk`；
+不发布版本时也可以取 [Actions](../../actions/workflows/build.yml) 每次构建产出的 artifact。
 
-> **1.9.1**：Key 卡片的「＋ 添加」按钮去掉加号，文字居中，左右留 18dp 内边距。
->
-> **1.9.0 Key 列表改成卡片式**：对齐网页版——标题栏显示「API KEY（N 个生效）」+ 右上「＋ 添加」，每把 Key 一张卡（名称、【已启用】与【固定国际版/国内版】徽章、掩码 `Key: sk-wb-1fa5******b94e`、创建时间、复制/编辑/禁用/删除）。下拉展开的交互取消，进页即全量显示。
->
-> **1.8.0 设置入口下移 + 全局交互动画**：「我的」页的设置卡挪到最底部，去掉「打开」按钮，整张卡可点（右侧 `›` 提示）；tab 图标 `☺` 换成 `◍`。所有按钮与卡片加了按下缩放（96% / 90ms）、列表项淡入上移、页面切换淡入滑动。
->
-> **1.7.0 控制台改为总览页**：控制台 tab 现在是「服务状态 + 接入信息 + 终端样式运行日志」，日志带 INFO/WARN/ERROR 级别筛选与关键词过滤，黑底等宽、级别染色，每 2 秒刷新；网页版完整面板仍留在页底入口。运行日志已从代理页移走。
->
-> **1.6.0 内嵌控制台 + 实时日志 + 浅色外观**：控制台 tab 直接内嵌完整 Web 面板（不再跳新页面），服务没启动时显示提示；代理页新增「运行日志」卡，每 2 秒刷新最近 12 条。设置里新增外观选项：**浅色 / 深色**，App 界面与 Web 面板一起切换。
->
-> **1.5.0 底部导航 + 设置页**：界面拆成四个 tab——**代理**（启停与状态）、**API**（Base URL、Key 管理、监听端口）、**控制台**（打开 Web 面板）、**我的**（账号池、设置入口）。新增设置页可调字号（小/标准/大/特大）与卡片紧凑度，改完立即生效。
->
-> **1.4.1 新建 Key 界面重做 + 危险操作二次确认**：区域选择从三条长单选换成三张可点选的卡片（选中亮青色描边），下方实时显示「选了它会发生什么」。删除与停用都要在弹窗里再确认一次，确认键标红；只剩一把启用 Key 时直接拦下。
->
-> **1.4.0 Key 改成下拉列表**：首页接入信息里的 Key 变成可展开的下拉菜单，每把 Key 一行，行内直接有 复制 / 编辑 / 停用 / 删除；主按钮换成「＋ 新建 API Key」。编辑可以随时改名称与区域，改完立刻影响派号。控制台同步加了「编辑」。
->
-> **1.3.0 多 Key + 区域绑定**：Key 不再自动生成一把，改为用户自己创建，创建时可选「仅国际版 / 仅国内版 / 不限制」。绑了区域的 Key 只会派该区域的账号——同一个模型名两边都有时，靠 Key 决定走哪边。App 首页「管理 Key」和控制台「设置 → API Key」都能建。旧版本的那把 Key 会自动迁移成「默认 Key（不限制）」，老客户端不用改。
->
-> **1.2.1 修国际版 Google 登录**：Google 从 2021 起拒绝在嵌入式 WebView 里完成 OAuth（提示「此浏览器或应用可能不安全」）。国际版登录页现在默认用**系统浏览器**打开授权页，完成后再切回 App 自动入池；国内版仍可在应用内登录。之前把 UA 伪装成桌面 Chrome 的做法也一并去掉了——那反而更像伪造。
->
-> **1.2.0 新增 Buddy 加油站签到**：国内版账号展开后，若今日未领会多一个「签到领积分」按钮，点一下直接打上游 `daily-checkin`，成功后详情与积分自动刷新。App 首页与控制台都有。
->
-> **1.1.0 新增账号详情**：点账号卡片（App 首页或控制台）向下展开，显示档位、积分余量（带占比条）、Buddy 加油站今日领取状态与连续天数、最近到期的一包、积分包数量。数据实时取上游计费接口，结果缓存 60 秒，收起再点开会刷新。
->
-> **1.0.2 两处改动**：① 上游只接受流式请求（非流式会回 `400 Non-stream chat request is currently not supported`），现在网关内部一律开流、非流式客户端由网关聚合 SSE 后返回 JSON；② **改为手动启动**——App 打开不再自动占用端口，也没有开机自启，只有点「启动服务」才监听。可直接覆盖安装（同签名），无需卸载。
+> 按版本拆开的详细变更已移到 [CHANGELOG.md](CHANGELOG.md)，本页只留当前版本说明。
 
 - 最低 Android 7.0（API 24），目标 API 34
 - 使用 debug 密钥签名，安装时需允许「未知来源」
 - 不需要 root，不需要装 Termux / Python
+- 当前版本 **1.9.1**（versionCode 16），变更见 [CHANGELOG.md](CHANGELOG.md)
 
 ## 二、首次使用
 
@@ -144,7 +127,7 @@ curl http://<手机IP>:8788/v1/chat/completions \
 ## 七、已知限制
 
 - **后台保活**：国产 ROM 的深度省电会杀进程，建议在系统设置里给本 App 开「允许后台运行 / 忽略电池优化」，并保留常驻通知。
-- **签名**：当前为 debug 签名，方便直接安装；正式分发请用自建 keystore 重新签名（见第八节）。
+- **签名**：当前为 debug 签名，方便直接安装；正式分发请用自建 keystore 重新签名（见第八节「正式签名」）。
 - **未实现** `/v1/responses`（Codex 走的协议）。OpenAI 兼容客户端用 `chat/completions` 即可；需要 Codex 时请用参考项目的桌面网关。
 - **图片输入**未透传：Anthropic `image` 块与 OpenAI `image_url` 都会被丢弃，上游 vision 参数需要另一套映射。
 - **静态模型清单**是兜底用的：只有账号池为空或上游目录取不到时才会返回。
@@ -187,6 +170,27 @@ echo "sdk.dir=/path/to/Android/Sdk" > local.properties
 工具链：JDK 17+、Android SDK 34（compileSdk 34 / minSdk 24）、Gradle 8.9（wrapper 已带）、AGP 8.5.2、Kotlin 2.0.21。
 
 工程刻意不使用任何第三方运行时依赖，`dependencies` 块是空的——构建只需要 Android SDK 和 Kotlin 标准库，不依赖外网仓库之外的包。
+
+### 正式签名
+
+仓库里的 release 构建刻意复用 debug 签名，目的是让任何人 clone 下来直接 `assembleRelease` 就能装。要对外分发自己的构建，用自建 keystore：
+
+```bash
+keytool -genkeypair -v -keystore my-release.jks -alias workbuddy \
+        -keyalg RSA -keysize 2048 -validity 10000
+```
+
+`keystore.properties`（**已在 .gitignore 里，绝不入库**）：
+
+```properties
+storeFile=/absolute/path/to/my-release.jks
+storePassword=…
+keyAlias=workbuddy
+keyPassword=…
+```
+
+在 `app/build.gradle.kts` 顶部读取该文件并挂到 `signingConfigs`，再让 `buildTypes.release` 用它替代 `signingConfigs.getByName("debug")`。换签名后旧版本无法覆盖安装，用户需先卸载。
+
 
 ## 九、验证状态
 

@@ -1,0 +1,66 @@
+name: Bug report
+description: App 行为不符合预期
+title: '[bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        日志和配置里如果含 `sk-wb-…` 或 token，先替换成 `sk-wb-xxxx` 再贴。
+  - type: input
+    id: version
+    attributes:
+      label: App 版本
+      description: 首页底部或「设置」里能看到，形如 1.9.1（versionCode 16）
+      placeholder: '1.9.1 (16)'
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Android 版本与机型
+      placeholder: 'Android 14 / 小米 14'
+    validations:
+      required: true
+  - type: dropdown
+    id: realm
+    attributes:
+      label: 账号区域
+      options:
+        - 国际版
+        - 国内版
+        - 两个都试过
+        - 还没加账号
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开 App → 代理页 → 启动服务
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果 / 实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: 有 `last_crash.txt` 就贴内容；否则贴 `adb logcat -d -s AndroidRuntime:E | tail -60` 的结果
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 确认
+      options:
+        - label: 已去掉日志里的 token / key / 账号
+          required: true
+        - label: 已搜索过现有 Issue，没有重复
+          required: true
