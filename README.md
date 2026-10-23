@@ -135,7 +135,7 @@ curl http://<手机IP>:8788/v1/chat/completions \
 ## 八、源码与构建
 
 ```
-wb2api-android/
+.
 ├── app/src/main/java/com/workbuddy/proxy/
 │   ├── App.kt                  Application / 通知渠道
 │   ├── MainActivity.kt         首页：状态、账号池、接入信息
