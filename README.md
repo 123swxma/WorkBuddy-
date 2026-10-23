@@ -10,27 +10,6 @@
 
  [Releases](https://github.com/123swxma/WorkBuddy-/releases)
 
-## 怎么用
-
-打开 app，在「代理」页点启动服务。默认只监听本机 8788 端口。
-
-接着去「我的」页添加账号。国际版会跳到系统浏览器登录，Google 不让在 WebView 里完成授权；国内版可以直接在 app 里登。登录完自动进池子。
-
-「API」页能看到 Base URL 和 Key。Key 要自己建，建的时候选走国际版还是国内版，这个选择决定这把 Key 只能用哪边的账号。
-
-填进客户端：
-
-- Base URL：`http://127.0.0.1:8788/v1`，别的设备用 `http://手机IP:8788/v1`
-- API Key：自己建的那串
-
-Claude Code 是这样：
-
-```bash
-export ANTHROPIC_BASE_URL=http://<手机IP>:8788
-export ANTHROPIC_AUTH_TOKEN=sk-wb-xxxxxxxx
-```
-
-base url 后面不要带 `/v1`。
 
 ## 支持的接口
 
