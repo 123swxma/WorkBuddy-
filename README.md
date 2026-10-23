@@ -1,252 +1,67 @@
-# WorkBuddy 反代（Android 版）
+# WorkBuddyProxy
 
-[![build](../../actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![minSdk](https://img.shields.io/badge/minSdk-24%20%2F%20Android%207.0-blue)
-![deps](https://img.shields.io/badge/runtime%20deps-0-success)
 
-把 WorkBuddy 账号池封装成本机 HTTP 接口，跑在手机上，对外提供 **OpenAI Chat Completions** 与 **Anthropic Messages** 两种协议。原生 Kotlin 实现，零第三方依赖，APK 约 780 KB。手机自己就能当网关：同一 Wi-Fi 下的电脑、平板、其他设备直接连手机，不用再开一台常驻电脑。
+在 Android 手机上跑一个网关，把 WorkBuddy 的账号变成 OpenAI / Anthropic 兼容接口。同一 Wi-Fi 下的电脑、平板直接连手机就能用，不用再开一台电脑挂着。
 
-参考实现：[ardeyouxipianyi/workbuddy2api-hub](https://github.com/ardeyouxipianyi/workbuddy2api-hub)（Python 桌面网关）。本项目按它的抓包结论重写了移动端内核，协议参数与身份头逐项对齐，但**没有沿用 Python 运行时**——原生 Kotlin 重写，仍然零第三方依赖。
+纯 Kotlin 写的，没有第三方依赖。APK 八百多 KB，Android 7.0 以上能装。
 
----
+## 安装
 
-## 一、安装
+去 [Releases](https://github.com/123swxma/WorkBuddy-/releases) 下 apk 直接装。签名用的是 debug 证书，系统会提示，允许就行。
 
-安装包：[Releases](../../releases/latest) —— 下载最新一条里的 `WorkBuddyProxy-<版本>.apk`；
-不发布版本时也可以取 [Actions](../../actions/workflows/build.yml) 每次构建产出的 artifact。
+## 怎么用
 
-> 按版本拆开的详细变更已移到 [CHANGELOG.md](CHANGELOG.md)，本页只留当前版本说明。
+打开 app，在「代理」页点启动服务。默认只监听本机 8788 端口。
 
-- 最低 Android 7.0（API 24），目标 API 34
-- 使用 debug 密钥签名，安装时需允许「未知来源」
-- 不需要 root，不需要装 Termux / Python
-- 当前版本 **1.9.1**（versionCode 16），变更见 [CHANGELOG.md](CHANGELOG.md)
+接着去「我的」页添加账号。国际版会跳到系统浏览器登录，Google 不让在 WebView 里完成授权；国内版可以直接在 app 里登。登录完自动进池子。
 
-## 二、首次使用
+「API」页能看到 Base URL 和 Key。Key 要自己建，建的时候选走国际版还是国内版，这个选择决定这把 Key 只能用哪边的账号。
 
-1. 打开 App，在 **代理** 页点 **启动服务**（默认不自动启动，也不会开机自启），服务监听 `127.0.0.1:8788`。局域网开关在控制台的设置里。
-2. 切到 **我的** 页，点 **＋ 添加 WorkBuddy 账号** → 选区域：
-   - **国际版**：默认用系统浏览器打开授权页（Google 账号必须走这条，WebView 会被 Google 判定为不安全浏览器）。登录完切回 App，会自动检测并入库。
-   - **国内版**：可在应用内 WebView 完成，也可点「用浏览器打开」。
-   两种方式都不需要复制粘贴任何东西；轮询在服务端跑，跳走也不会丢结果。
-3. 切到 **API** 页，复制 **API Base URL** 与 **API Key**（Key 可以自建多把、各绑区域）。
-4. 填进客户端即可。
+填进客户端：
 
-> 登录也可以手动粘贴 `accessToken`（从桌面客户端抓或从浏览器开发者工具取），作为 WebView 登录失败时的后备路径。
+- Base URL：`http://127.0.0.1:8788/v1`，别的设备用 `http://手机IP:8788/v1`
+- API Key：自己建的那串
 
-## 三、客户端配置
-
-### OpenAI 兼容客户端
-（Cherry Studio / LobeChat / OpenWebUI / NextChat / ChatBox …）
-
-| 项 | 值 |
-| --- | --- |
-| Base URL | `http://127.0.0.1:8788/v1`（手机本机）<br>`http://<手机局域网IP>:8788/v1`（同网设备） |
-| API Key | 自己建的 `sk-wb-…`；建时选区域 |
-| 模型 | 用 `/v1/models` 拉取，或手填 `gpt-5.5`、`glm-5.3` 等 |
-
-### Claude Code
+Claude Code 是这样：
 
 ```bash
-export ANTHROPIC_BASE_URL=http://<手机IP>:8788     # 注意：末尾不要带 /v1
+export ANTHROPIC_BASE_URL=http://<手机IP>:8788
 export ANTHROPIC_AUTH_TOKEN=sk-wb-xxxxxxxx
-claude
 ```
 
-Claude Code 默认发的 `claude-sonnet-4-5` 这类模型名上游并不存在，网关会自动折到上游目录里的 GPT 系模型；你显式填上游模型名时则原样透传。
+base url 后面不要带 `/v1`。
 
-### curl 自测
+## 支持的接口
+
+- `/v1/chat/completions`，支持流式
+- `/v1/messages`，给 Anthropic 的客户端用
+- `/v1/models`
+
+多个账号会轮流用，某个号失败了自动换下一个。
+
+## 做不到的
+
+- `/v1/responses` 没实现，Codex 用的那个协议用不了
+- 图片输入会被丢掉
+- 上游只接受流式请求。客户端要非流式的话，是网关自己把流读完拼成完整响应再返回，会比直连慢一点
+
+## 两个坑
+
+手机厂商的省电策略会杀后台。最好给这个 app 开「忽略电池优化」，不然服务会莫名其妙停掉。
+
+现在是 debug 签名，要正式发布得自己换个 keystore。
+
+## 自己编译
 
 ```bash
-curl http://<手机IP>:8788/v1/chat/completions \
-  -H "Authorization: Bearer sk-wb-xxxx" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"gpt-5.5","stream":true,"messages":[{"role":"user","content":"你好"}]}'
-```
-
-## 四、接口一览
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/v1/chat/completions` | OpenAI 协议，支持 SSE 流式与 tool_calls 透传 |
-| GET | `/v1/models` | 上游模型目录（无账号时返回内置清单） |
-| POST | `/v1/messages` | Anthropic 协议，含事件流与 `tool_use` |
-| POST | `/v1/messages/count_tokens` | 按字符粗估，供 Claude Code 裁剪上下文 |
-| GET | `/` | 内置 Web 控制台 |
-| GET | `/health` | 存活探测 |
-| GET | `/api/accounts/{uid}/detail` | 账号积分与签到状态（面板用，`?refresh=1` 强制刷新） |
-| POST | `/api/accounts/{uid}/checkin` | 触发 Buddy 加油站签到（仅国内版） |
-| GET | `/api/keys` | 列出所有 Key（含区域与启停） |
-| POST | `/api/keys` | 新建 Key：`{"label":"电脑端","realm":"intl\|cn\|any"}` |
-| POST | `/api/keys/{id}/update` | 改名称与区域：`{"label":"…","realm":"intl\|cn\|any"}` |
-| POST | `/api/keys/{id}/toggle` | 启停某把 Key |
-| DELETE | `/api/keys/{id}` | 删除某把 Key（至少保留一把启用的） |
-
-管理接口 `/api/*` 默认只允许 `127.0.0.1`；从局域网访问面板需带 `?key=<API Key>`。
-
-## 五、和参考实现的对齐点
-
-| 环节 | 取值 |
-| --- | --- |
-| 国际版对话 | `https://www.workbuddy.ai/v2/chat/completions` |
-| 国内版对话 | `https://copilot.tencent.com/v2/chat/completions`（可切 `www.workbuddy.cn`） |
-| 模型目录 | `/v2/enterprises/personal/models` → `data.agents[].models[]` |
-| 登录 | `POST /v2/plugin/auth/state?platform=CLI` → 浏览器授权 → `GET /v2/plugin/auth/token?state=` |
-| 续期 | `POST /v2/plugin/auth/token/refresh`（带 `X-Refresh-Token`） |
-| 桌面端 UA | `WorkBuddy/5.8.4 workbuddy-ai/5.8.4 CLI/2.161.0`（国内版 5.8.3） |
-| 身份头 | `X-Agent-Intent: craft`、`X-IDE-*`、`X-Product: SaaS`、`X-Domain`、`X-User-Id`、`X-Private-Data` |
-| 会话头 | `X-Conversation-ID`、`X-Conversation-Request-ID`、`X-Root-Request-ID`、`X-Conversation-Message-ID`、`X-Request-ID`（32 位 hex） |
-| 链路头 | `X-Trace-ID`、`traceparent`、`b3`、`X-B3-*` |
-
-上游 `/v2/chat/completions` 本身就是 OpenAI Chat Completions 帧（`choices[].delta`、`reasoning_content`、`tool_calls`），所以转发层不做结构翻译，只做三件事：补齐 system 首条、按账号轮询、流式逐行透传并清掉空噪声字段。协议翻译只发生在 Anthropic 入口。
-
-## 五之二、账号详情怎么取
-
-两个区域的取数路径不同，网关里归一成同一份结构（`AccountDetail`）：
-
-| | 国际版 | 国内版 |
-| --- | --- | --- |
-| 积分包 | `POST /v2/billing/meter/get-user-resource`<br>读 `data.Response.Data.Accounts[]` | `POST /billing/meter/get-user-resource-summary` → 免费包 / 付费包两个接口 |
-| 加油站签到 | 无此活动 | 读状态 `POST /v2/billing/meter/checkin-activity-status`（copilot.tencent.com）<br>领积分 `POST /v2/billing/meter/daily-checkin`（codebuddy.cn） |
-| 档位 | 取计费摘要的 `IsPaidUser` | 同左 |
-
-积分字段按 `CycleCapacityRemainPrecise` → `CycleCapacityRemain` → `CapacityRemainPrecise` → `CapacityRemain` 依次回落；发放原因读 `AccountAttributes[].Key == "grantReason"`（如「Buddy 加油站签到」）。计费请求带的是轻量标头（`X-CodeBuddy-Request`、`X-Machine-ID`、`X-Session-ID` 按账号派生），不吃对话那套 `X-Agent-*` 身分。
-
-## 六、设置项
-
-内置控制台（App 首页 →「控制台」）可改：
-
-- 监听端口在 App 的 API 页改；局域网开关、上游入口等在控制台改
-- 外观（浅色/深色）、字号、卡片紧凑度在 App 的「我的 → 设置」里改
-- System 注入策略：`auto`（缺 system 时补一句）/ `keep`（原样透传）/ `replace`（统一覆盖）
-- 国内版入口切换、国际版上游基址覆盖（可指向自建中转）
-- 读超时、失败换号次数、空 delta 清洗
-- 重置 API Key
-
-## 七、已知限制
-
-- **后台保活**：国产 ROM 的深度省电会杀进程，建议在系统设置里给本 App 开「允许后台运行 / 忽略电池优化」，并保留常驻通知。
-- **签名**：当前为 debug 签名，方便直接安装；正式分发请用自建 keystore 重新签名（见第八节「正式签名」）。
-- **未实现** `/v1/responses`（Codex 走的协议）。OpenAI 兼容客户端用 `chat/completions` 即可；需要 Codex 时请用参考项目的桌面网关。
-- **图片输入**未透传：Anthropic `image` 块与 OpenAI `image_url` 都会被丢弃，上游 vision 参数需要另一套映射。
-- **静态模型清单**是兜底用的：只有账号池为空或上游目录取不到时才会返回。
-
-## 八、源码与构建
-
-```
-.
-├── app/src/main/java/com/workbuddy/proxy/
-│   ├── App.kt                  Application / 通知渠道
-│   ├── MainActivity.kt         首页：状态、账号池、接入信息
-│   ├── LoginActivity.kt        内置 WebView OAuth
-│   ├── ConsoleActivity.kt      控制台容器
-│   ├── ProxyService.kt         前台服务，持有监听
-│   ├── core/                   协议与账号内核
-│   │   ├── Realms.kt           两区端点 / UA / 版本
-│   │   ├── Identity.kt         设备与会话标识派生
-│   │   ├── Upstream.kt         登录、续期、模型、chat 连接
-│   │   ├── ProxyEngine.kt      转发、换号、SSE
-│   │   ├── AnthropicRpc.kt     Messages ⇄ Chat 双向翻译
-│   │   ├── Account*.kt         账号模型与轮询池
-│   │   └── LoginWatcher.kt     服务端登录轮询
-│   └── server/                 手写 HTTP/1.1 与路由
-└── app/src/main/assets/console.html   移动端控制台
-```
-
-构建：
-
-```bash
-git clone https://github.com/<你的用户名>/WorkBuddyProxy.git
-cd WorkBuddyProxy
-
-# 指向本机 Android SDK（放在 local.properties，已被 .gitignore 排除）
-echo "sdk.dir=/path/to/Android/Sdk" > local.properties
-
 ./gradlew assembleRelease
-# 产物：app/build/outputs/apk/release/app-release.apk
 ```
 
-工具链：JDK 17+、Android SDK 34（compileSdk 34 / minSdk 24）、Gradle 8.9（wrapper 已带）、AGP 8.5.2、Kotlin 2.0.21。
+需要 JDK 17 和 Android SDK 34。sdk 路径写在 `local.properties`，这个文件不进仓库。
 
-工程刻意不使用任何第三方运行时依赖，`dependencies` 块是空的——构建只需要 Android SDK 和 Kotlin 标准库，不依赖外网仓库之外的包。
+协议细节参考了 [workbuddy2api-hub](https://github.com/ardeyouxipianyi/workbuddy2api-hub) 的抓包结论，代码是重新写的。
 
-### 正式签名
+## 许可
 
-仓库里的 release 构建刻意复用 debug 签名，目的是让任何人 clone 下来直接 `assembleRelease` 就能装。要对外分发自己的构建，用自建 keystore：
-
-```bash
-keytool -genkeypair -v -keystore my-release.jks -alias workbuddy \
-        -keyalg RSA -keysize 2048 -validity 10000
-```
-
-`keystore.properties`（**已在 .gitignore 里，绝不入库**）：
-
-```properties
-storeFile=/absolute/path/to/my-release.jks
-storePassword=…
-keyAlias=workbuddy
-keyPassword=…
-```
-
-在 `app/build.gradle.kts` 顶部读取该文件并挂到 `signingConfigs`，再让 `buildTypes.release` 用它替代 `signingConfigs.getByName("debug")`。换签名后旧版本无法覆盖安装，用户需先卸载。
-
-
-## 九、验证状态
-
-**已通过**
-
-| 项 | 结果 |
-| --- | --- |
-| 干净构建 | `clean assembleRelease` → BUILD SUCCESSFUL，产物 779 KB |
-| 包结构 | `com.workbuddy.proxy` / minSdk 24 / targetSdk 34 / 启动 Activity 正确 |
-| 签名 | `apksigner verify` 通过（debug 证书，可直接侧载） |
-| dex 构成 | 12886 个方法引用，单 dex，**零 androidx、零第三方库** |
-| 控制台 | 抽出内联 JS 做 `node --check`，语法通过 |
-| 协议对拍 | 本机 mock 上游复刻了 `auth/state`、`auth/token`（含 11217 等待码）、`login/account`、`models`、`chat`（SSE 帧 + 「缺 system 就 400」的强校验），逐端点响应符合预期 |
-
-**未做**
-
-- 真机 / 模拟器运行验证：本机缺 Android 模拟器硬件加速驱动，纯软件模拟启动 20 分钟仍未完成；也没有连接真机可用。
-- Robolectric JVM 测试栈在 AGP 8.5 + Kotlin 2.0 组合下存在测试 classpath 缺陷（`ClassNotFoundException`），绕开后又在 JDK 22 下卡死，最终未能跑通，已从工程移除以免污染发布构建。
-
-**1.0.2 修复记录**
-
-1.0.1 之后有两条反馈：连通性测试返回 `400 Non-stream chat request is currently not supported`；以及希望不要自动开服。
-
-- 上游强制流式：参考实现的 `build_upstream_body` 里 `body["stream"] = True` 是写死的，我此前把客户端的 `stream` 原样传了上去。现在 `buildUpstreamBody` 统一覆写为 `stream: true` 并补 `stream_options.include_usage`，非流式请求由 `StreamAggregator` 读完整条 SSE 再拼成 `chat.completion`（含 tool_calls 按 index 合并、丢弃空函数名占位）。`/api/test` 与 Anthropic 非流式都改走这条路。
-- 手动启动：删掉 `Prefs.autoStart` / `bootStart`、`BootReceiver` 与 `RECEIVE_BOOT_COMPLETED` 权限，`MainActivity` 不再在 `onCreate`/`onResume` 拉起服务。
-
-**1.0.1 修复记录**
-
-1.0.0 发布后用户反馈「点开就闪退」。根因是 `AndroidManifest.xml` 的 `<application>` 漏了 `android:name=".App"`：
-
-1. Application 不实例化 → `App.onCreate` 里的通知渠道从未创建；
-2. `ProxyService.onCreate` 用该渠道构造通知，`startForeground` 抛 `invalid channel`；
-3. 五秒内没进入前台，系统按「前台服务未就绪」直接杀掉进程——表现就是闪退。
-
-修复三处：补上 Application 注册；服务自己在 `onCreate` 建渠道，不再依赖 Application；`startForeground` 失败时主动 `stopSelf`，不把进程交给系统杀。另外加了崩溃堆栈落盘（`last_crash.txt`），下次再出问题能直接看到栈。
-
-这正是「只做静态验证」的代价：`aapt2 badging` 看不出 manifest 少一个属性，只有真正跑一次启动链路才会暴露。
-
-**装到手机后 1 分钟自检**
-
-1. 打开 App，顶部应显示「服务运行中」，端口 8788。
-2. 添加账号后进「控制台 → 概览 → 链路测试」，返回 `成功：<账号名> · …` 即上游链路通。
-3. 同网电脑执行 `curl http://<手机IP>:8788/health`，应返回 `{"ok":true,"version":"1.0.2"}`。
-
-## 十、崩溃了怎么排查
-
-App 安装了一个未捕获异常的兜底：崩溃堆栈会写到应用私有目录的 `last_crash.txt`，下次启动时弹窗显示一次（看完自动删除）。把弹窗内容发出来就能直接定位。
-
-如果连弹窗都看不到（崩在 Application 启动之前），用数据线抓日志：
-
-```bash
-adb logcat -d -s AndroidRuntime:E ActivityManager:E | tail -60
-```
-
-1.0.0 的闪退就是这样定位的：栈里会出现 `Bad notification for startForeground` / `invalid channel`，指向通知渠道缺失，而不是网络或账号问题。
-
-## 十一、许可证与声明
-
-仅供个人学习与自用，遵循参考项目的 MIT 许可精神。上游账号的使用须遵守 WorkBuddy / CodeBuddy 的服务条款，本项目不代管、不上传任何账号凭据——令牌只存在手机 App 私有目录里。
+MIT
