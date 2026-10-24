@@ -20,6 +20,6 @@
 
 ### Changed
 
-- Key 卡片的「＋ 添加」按钮去掉加号，文字居中。
+- 优化了一些功能
 [Unreleased]: https://github.com/123swxma/WorkBuddy-/compare/v1.9.1...HEAD
 [1.9.1]: https://github.com/123swxma/WorkBuddy-/compare/v1.9.0...v1.9.1
