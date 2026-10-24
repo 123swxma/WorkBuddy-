@@ -116,10 +116,24 @@ object KeyStore {
     fun findById(id: String): ApiKey? = synchronized(lock) { keys.firstOrNull { it.id == id } }
 
     fun create(label: String, realm: String): ApiKey = synchronized(lock) {
-        val created = build(label.ifBlank { "新 Key" }, realm)
+        val created = build(uniqueLabel(label.ifBlank { "新 Key" }, null), realm)
         keys.add(created)
         saveLocked()
         created
+    }
+
+    /**
+     * 名称去重，跟 Windows 新建文件夹一个规则：
+     * 「电脑端」→「电脑端 (2)」→「电脑端 (3)」…
+     *
+     * @param excludeId 改自己名字时把自己排除掉，否则会变成「x (2)」
+     */
+    private fun uniqueLabel(base: String, excludeId: String?): String {
+        val taken = keys.filter { it.id != excludeId }.map { it.label }.toSet()
+        if (base !in taken) return base
+        var n = 2
+        while ("$base ($n)" in taken) n++
+        return "$base ($n)"
     }
 
     fun remove(id: String): Boolean = synchronized(lock) {
@@ -137,7 +151,7 @@ object KeyStore {
 
     fun rename(id: String, label: String) = synchronized(lock) {
         keys.firstOrNull { it.id == id }?.let {
-            it.label = label.ifBlank { it.label }
+            it.label = uniqueLabel(label.ifBlank { it.label }, id)
             saveLocked()
         }
     }
@@ -145,7 +159,7 @@ object KeyStore {
     /** 同时改名称与区域（区域改了立即影响后续派号）。 */
     fun update(id: String, label: String, realm: String) = synchronized(lock) {
         keys.firstOrNull { it.id == id }?.let {
-            it.label = label.ifBlank { it.label }
+            it.label = uniqueLabel(label.ifBlank { it.label }, id)
             it.realm = Realms.normalizeKeyRealm(realm)
             saveLocked()
         }

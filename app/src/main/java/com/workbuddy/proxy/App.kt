@@ -7,6 +7,7 @@ import android.os.Build
 import android.util.Log
 import com.workbuddy.proxy.core.AccountStore
 import com.workbuddy.proxy.core.KeyStore
+import com.workbuddy.proxy.core.UsageStore
 import com.workbuddy.proxy.core.Prefs
 import com.workbuddy.proxy.core.Tuning
 import java.io.File
@@ -20,6 +21,7 @@ class App : Application() {
         Tuning.init(this)
         AccountStore.init(this)
         KeyStore.init(this)
+        UsageStore.init(this)
         createChannel()
         installCrashHandler()
     }

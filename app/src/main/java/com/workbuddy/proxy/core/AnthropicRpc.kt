@@ -17,7 +17,7 @@ object AnthropicRpc {
 
     // ------------------------------------------------------------- 入口
 
-    fun handleMessages(req: HttpReq, keyRealm: String? = null) {
+    fun handleMessages(req: HttpReq, keyRealm: String? = null, keyLabel: String = "") {
         val anthropic = try {
             JSONObject(req.bodyText)
         } catch (e: Exception) {
@@ -32,7 +32,7 @@ object AnthropicRpc {
         // 不再覆盖 stream：上游只接受流式，强制逻辑统一在 buildUpstreamBody
         val bytes = body.toString().toByteArray(Charsets.UTF_8)
 
-        when (val res = ProxyEngine.openWithRetry(bytes, model, true, keyRealm)) {
+        when (val res = ProxyEngine.openWithRetry(bytes, model, true, keyRealm, keyLabel)) {
             is ProxyEngine.OpenResult.Err -> {
                 // Anthropic 的错误形状与 OpenAI 不同，客户端按 error.type 分支
                 req.sendJson(
@@ -51,7 +51,7 @@ object AnthropicRpc {
                 // 上游只支持流式；非流式请求在这里开流、聚合、再翻译成 Messages 形状
                 if (!stream) {
                     runCatching { res.conn.disconnect() }
-                    val probe = ProxyEngine.complete(bytes, model, keyRealm)
+                    val probe = ProxyEngine.complete(bytes, model, keyRealm, keyLabel)
                     val obj = probe.body
                     val shown = requestedModel.ifBlank { model }
                     if (obj == null) {

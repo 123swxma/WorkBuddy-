@@ -62,14 +62,6 @@
                     android:textColor="@color/text"
                     android:textSize="14.5sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="深色适合夜间，浅色在强光下更清楚"
-                    android:textColor="@color/dim"
-                    android:textSize="11.5sp" />
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -111,14 +103,6 @@
                     android:text="字号"
                     android:textColor="@color/text"
                     android:textSize="14.5sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="影响所有界面的文字大小"
-                    android:textColor="@color/dim"
-                    android:textSize="11.5sp" />
 
                 <LinearLayout
                     android:id="@+id/fontGroup"
@@ -197,13 +181,6 @@
                             android:textColor="@color/text"
                             android:textSize="14.5sp" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="缩小卡片内边距，一屏能看更多"
-                            android:textColor="@color/dim"
-                            android:textSize="11.5sp" />
                     </LinearLayout>
 
                     <Switch
@@ -211,6 +188,284 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
                 </LinearLayout>
+            </LinearLayout>
+
+            <!-- 网络 -->
+            <LinearLayout
+                style="@style/CardBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="网络"
+                    android:textColor="@color/text"
+                    android:textSize="14.5sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="默认 8788 · 改端口后需要重启服务"
+                    android:textColor="@color/dim"
+                    android:textSize="11.5sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="监听端口"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/setPort"
+                        android:hint="8788"
+                        android:layout_width="110dp"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_chip"
+                        android:gravity="center"
+                        android:inputType="number"
+                        android:maxLength="5"
+                        android:paddingStart="8dp"
+                        android:paddingTop="7dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="7dp"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="允许局域网访问"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+
+                    <Switch
+                        android:id="@+id/setLan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 上游 -->
+            <LinearLayout
+                style="@style/CardBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="上游"
+                    android:textColor="@color/text"
+                    android:textSize="14.5sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="System 提示处理（默认 auto）"
+                    android:textColor="@color/dim"
+                    android:textSize="11.5sp" />
+
+                <RadioGroup
+                    android:id="@+id/setPromptGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/setPromptAuto"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="auto — 缺 system 时补一句默认"
+                        android:textColor="@color/text"
+                        android:textSize="12.5sp" />
+
+                    <RadioButton
+                        android:id="@+id/setPromptKeep"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="keep — 原样透传"
+                        android:textColor="@color/text"
+                        android:textSize="12.5sp" />
+
+                    <RadioButton
+                        android:id="@+id/setPromptReplace"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="replace — 统一覆盖"
+                        android:textColor="@color/text"
+                        android:textSize="12.5sp" />
+                </RadioGroup>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="国内版对话入口（默认 copilot.tencent.com）"
+                    android:textColor="@color/dim"
+                    android:textSize="11.5sp" />
+
+                <RadioGroup
+                    android:id="@+id/setCnGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/setCnPrimary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="copilot.tencent.com（国内）"
+                        android:textColor="@color/text"
+                        android:textSize="12.5sp" />
+
+                    <RadioButton
+                        android:id="@+id/setCnAlt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="www.workbuddy.cn（海外可用）"
+                        android:textColor="@color/text"
+                        android:textSize="12.5sp" />
+                </RadioGroup>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="国际版上游基址（默认 https://www.workbuddy.ai）"
+                    android:textColor="@color/dim"
+                    android:textSize="11.5sp" />
+
+                <EditText
+                    android:id="@+id/setIntlBase"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_chip"
+                    android:hint="https://www.workbuddy.ai"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:paddingStart="10dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="8dp"
+                    android:textColor="@color/text"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="读超时（秒，默认 300）"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/setTimeout"
+                        android:hint="300"
+                        android:layout_width="90dp"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_chip"
+                        android:gravity="center"
+                        android:inputType="number"
+                        android:maxLength="4"
+                        android:paddingStart="8dp"
+                        android:paddingTop="7dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="7dp"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="失败换号次数（默认 2）"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/setRetries"
+                        android:hint="2"
+                        android:layout_width="90dp"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_chip"
+                        android:gravity="center"
+                        android:inputType="number"
+                        android:maxLength="1"
+                        android:paddingStart="8dp"
+                        android:paddingTop="7dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="7dp"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="清理空 delta 字段"
+                        android:textColor="@color/text"
+                        android:textSize="13sp" />
+
+                    <Switch
+                        android:id="@+id/setClean"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnSaveAdvanced"
+                    style="@style/BtnPrimary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="保存网络与上游设置" />
             </LinearLayout>
 
             <LinearLayout

@@ -38,7 +38,7 @@ object ProxyEngine {
 
     // ------------------------------------------------------------ chat
 
-    fun handleChat(req: HttpReq, keyRealm: String? = null) {
+    fun handleChat(req: HttpReq, keyRealm: String? = null, keyLabel: String = "") {
         val client = try {
             JSONObject(req.bodyText)
         } catch (e: Exception) {
@@ -53,14 +53,24 @@ object ProxyEngine {
         val stream = client.optBoolean("stream", false)
         val bytes = buildUpstreamBody(client).toString().toByteArray(Charsets.UTF_8)
 
-        when (val res = openWithRetry(bytes, model, true, keyRealm)) {
-            is OpenResult.Err -> req.sendError(res.status, res.message)
+        when (val res = openWithRetry(bytes, model, true, keyRealm, keyLabel)) {
+            is OpenResult.Err -> {
+                UsageStore.record(
+                    UsageRecord(
+                        at = System.currentTimeMillis(), model = model, account = "",
+                        promptTokens = 0, completionTokens = 0, cachedTokens = 0,
+                        reasoningTokens = 0, ttftMs = 0, totalMs = 0, ok = false,
+                        keyLabel = keyLabel
+                    )
+                )
+                req.sendError(res.status, res.message)
+            }
             is OpenResult.Ok -> {
                 if (stream) {
                     Logs.info("chat $model via ${res.account.label()} (stream)")
-                    pipeSse(req, res.conn, model, res.account)
+                    pipeSse(req, res.conn, model, res.account, keyLabel)
                 } else {
-                    pipeAggregated(req, res.conn, model, res.account)
+                    pipeAggregated(req, res.conn, model, res.account, keyLabel)
                 }
             }
         }
@@ -73,7 +83,8 @@ object ProxyEngine {
         bytes: ByteArray,
         model: String,
         stream: Boolean,
-        keyRealm: String? = null
+        keyRealm: String? = null,
+        keyLabel: String = ""
     ): OpenResult {
         val tried = HashSet<String>()
         var lastStatus = 503
@@ -202,7 +213,13 @@ object ProxyEngine {
 
     // ------------------------------------------------------------ 响应处理
 
-    fun pipeSse(req: HttpReq, conn: HttpURLConnection, model: String, acc: Account) {
+    fun pipeSse(
+        req: HttpReq,
+        conn: HttpURLConnection,
+        model: String,
+        acc: Account,
+        keyLabel: String = ""
+    ) {
         // 开流可能就失败（客户端已断开）：先护住上游连接，别让它泄漏
         val writer = try {
             req.startStream("text/event-stream; charset=utf-8")
@@ -212,6 +229,7 @@ object ProxyEngine {
         }
         var sawDone = false
         var textChars = 0
+        val tracker = UsageTracker(model, acc.label(), keyLabel)
         try {
             val reader = conn.inputStream.bufferedReader(Charsets.UTF_8)
             while (true) {
@@ -223,6 +241,8 @@ object ProxyEngine {
                         writer.write("data: [DONE]\n\n")
                         continue
                     }
+                    val chunk = runCatching { JSONObject(payload) }.getOrNull()
+                    if (chunk != null) tracker.onChunk(chunk)
                     val cleaned = if (Tuning.cleanChunks) cleanChunk(payload) else payload
                     textChars += extractTextLength(cleaned)
                     writer.write("data: $cleaned\n\n")
@@ -237,6 +257,7 @@ object ProxyEngine {
         } finally {
             runCatching { conn.disconnect() }
             runCatching { writer.end() }
+            tracker.finish(sawDone || textChars > 0)
         }
         Logs.info("stream $model done, $textChars chars via ${acc.label()}")
     }
@@ -245,9 +266,16 @@ object ProxyEngine {
      * 客户端要非流式：上游照样开流，读完再聚合。
      * 上游对 `stream: false` 直接 400，这不是可协商的选项。
      */
-    private fun pipeAggregated(req: HttpReq, conn: HttpURLConnection, model: String, acc: Account) {
+    private fun pipeAggregated(
+        req: HttpReq,
+        conn: HttpURLConnection,
+        model: String,
+        acc: Account,
+        keyLabel: String = ""
+    ) {
+        val tracker = UsageTracker(model, acc.label(), keyLabel)
         try {
-            val out = readAggregated(conn, model)
+            val out = readAggregated(conn, model, tracker)
             if (out == null) {
                 req.sendError(502, "上游返回了空流，请稍后重试")
                 return
@@ -258,6 +286,7 @@ object ProxyEngine {
             req.sendError(502, "读取上游响应失败: ${e.message}")
         } finally {
             runCatching { conn.disconnect() }
+            tracker.finish(true)
         }
     }
 
@@ -269,8 +298,13 @@ object ProxyEngine {
         val account: String
     )
 
-    fun complete(bytes: ByteArray, model: String, keyRealm: String? = null): CompleteResult {
-        return when (val r = openWithRetry(bytes, model, true, keyRealm)) {
+    fun complete(
+        bytes: ByteArray,
+        model: String,
+        keyRealm: String? = null,
+        keyLabel: String = ""
+    ): CompleteResult {
+        return when (val r = openWithRetry(bytes, model, true, keyRealm, keyLabel)) {
             is OpenResult.Err -> CompleteResult(null, r.status, r.message, "")
             is OpenResult.Ok -> {
                 val body = try {
@@ -290,7 +324,11 @@ object ProxyEngine {
         }
     }
 
-    private fun readAggregated(conn: HttpURLConnection, model: String): JSONObject? {
+    private fun readAggregated(
+        conn: HttpURLConnection,
+        model: String,
+        tracker: UsageTracker? = null
+    ): JSONObject? {
         val aggregator = StreamAggregator(model)
         var sawChunk = false
         val reader = conn.inputStream.bufferedReader(Charsets.UTF_8)
@@ -301,6 +339,7 @@ object ProxyEngine {
             if (payload == "[DONE]") break
             val chunk = runCatching { JSONObject(payload) }.getOrNull() ?: continue
             aggregator.feed(chunk)
+            tracker?.onChunk(chunk)
             sawChunk = true
         }
         return if (sawChunk) aggregator.build() else null

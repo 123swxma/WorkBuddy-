@@ -76,19 +76,14 @@ class MainActivity : WbActivity() {
 
 
 
-        btnToggle.setOnClickListener {
-            if (ProxyService.running) {
-                ProxyService.stop(this)
-                handler.postDelayed({ render() }, 400)
-            } else {
-                ProxyService.start(this)
-                handler.postDelayed({ render() }, 700)
-            }
-        }
+        btnToggle.setOnClickListener { toggleService() }
 
         findViewById<TextView>(R.id.tabProxy).setOnClickListener { switchTab(TAB_PROXY) }
         findViewById<TextView>(R.id.tabApi).setOnClickListener { switchTab(TAB_API) }
         findViewById<TextView>(R.id.tabConsole).setOnClickListener { switchTab(TAB_CONSOLE) }
+        findViewById<TextView>(R.id.tabData).setOnClickListener { switchTab(TAB_DATA) }
+        findViewById<TextView>(R.id.keyDropdown).setOnClickListener { showKeyPicker() }
+        findViewById<TextView>(R.id.timeDropdown).setOnClickListener { showTimePicker() }
         findViewById<TextView>(R.id.tabMine).setOnClickListener { switchTab(TAB_MINE) }
         switchTab(TAB_PROXY)
 
@@ -114,19 +109,15 @@ class MainActivity : WbActivity() {
             }
         )
 
+        findViewById<Button>(R.id.btnCopyBase).setOnClickListener {
+            copyText("http://127.0.0.1:${portNow()}/v1", "Base URL")
+        }
         findViewById<Button>(R.id.btnCopyBaseUrl).setOnClickListener {
             copyText("http://127.0.0.1:${portNow()}/v1", "Base URL")
         }
         findViewById<Button>(R.id.btnCopyApiKey).setOnClickListener {
             val k = com.workbuddy.proxy.core.KeyStore.all().firstOrNull { it.enabled }
             if (k == null) toast("没有启用的 Key") else copyText(k.key, "API Key")
-        }
-        findViewById<Button>(R.id.btnOpenPanel).setOnClickListener {
-            if (!ProxyService.running) {
-                toast("请先启动服务")
-                return@setOnClickListener
-            }
-            startActivity(Intent(this, ConsoleActivity::class.java))
         }
 
         val portInput = findViewById<EditText>(R.id.portInput)
@@ -208,6 +199,56 @@ class MainActivity : WbActivity() {
         handler.removeCallbacksAndMessages(null)
     }
 
+    /**
+     * 启停服务：按钮进入「启动中 / 停止中」的过渡态，状态圆点做脉冲，
+     * 等 running 真正翻转后再淡入新状态——避免点一下没反应、过一秒突然跳变。
+     */
+    private fun toggleService() {
+        val starting = !ProxyService.running
+        btnToggle.isEnabled = false
+        btnToggle.text = if (starting) "启动中…" else "停止中…"
+        btnToggle.alpha = 0.7f
+        pulseDot()
+
+        if (starting) ProxyService.start(this) else ProxyService.stop(this)
+
+        val deadline = System.currentTimeMillis() + 2500
+        val poll = object : Runnable {
+            override fun run() {
+                val reached = ProxyService.running == starting
+                if (reached || System.currentTimeMillis() > deadline) {
+                    btnToggle.isEnabled = true
+                    btnToggle.alpha = 1f
+                    render()
+                    fadeIn(findViewById(R.id.statusText))
+                    val dot = findViewById<View>(R.id.statusDot)
+                    dot.animate().cancel()
+                    dot.alpha = 1f
+                } else {
+                    handler.postDelayed(this, 120)
+                }
+            }
+        }
+        handler.postDelayed(poll, 150)
+    }
+
+    /** 圆点呼吸：等待期间给个「还在处理」的视觉提示。 */
+    private fun pulseDot() {
+        val dot = findViewById<View>(R.id.statusDot)
+        dot.animate().cancel()
+        val anim = android.animation.ObjectAnimator.ofFloat(dot, "alpha", 1f, 0.22f)
+        anim.duration = 300
+        anim.repeatMode = android.animation.ValueAnimator.REVERSE
+        anim.repeatCount = 7
+        anim.start()
+    }
+
+    private fun fadeIn(view: View) {
+        view.animate().cancel()
+        view.alpha = 0.2f
+        view.animate().alpha(1f).setDuration(280).start()
+    }
+
     // ------------------------------------------------------------ 底部导航
 
     private fun switchTab(tab: Int) {
@@ -215,12 +256,14 @@ class MainActivity : WbActivity() {
             TAB_PROXY to R.id.pageProxy,
             TAB_API to R.id.pageApi,
             TAB_CONSOLE to R.id.pageConsole,
+            TAB_DATA to R.id.pageData,
             TAB_MINE to R.id.pageMine
         )
         val tabs = mapOf(
             TAB_PROXY to R.id.tabProxy,
             TAB_API to R.id.tabApi,
             TAB_CONSOLE to R.id.tabConsole,
+            TAB_DATA to R.id.tabData,
             TAB_MINE to R.id.tabMine
         )
         for ((id, pageId) in pages) {
@@ -243,6 +286,7 @@ class MainActivity : WbActivity() {
         if (tab == TAB_API) renderKeys()
         if (tab == TAB_MINE) renderAccounts()
         if (tab == TAB_CONSOLE) renderConsole()
+        if (tab == TAB_DATA) renderStats()
     }
 
     /** 控制台页：状态、接入信息、日志一屏看完。 */
@@ -353,6 +397,324 @@ class MainActivity : WbActivity() {
             )
         }
         box.text = sb
+    }
+
+    // ------------------------------------------------------------ 数据页
+
+    private val CARD_H = 138
+    private var selectedKeyLabel: String? = null
+    private var selectedRange = 0
+    private var lastFilterSig = ""
+
+    private fun fmtCompact(v: Long): String = when {
+        v >= 1_000_000 -> String.format(java.util.Locale.US, "%.2fM", v / 1_000_000.0)
+        v >= 1_000 -> String.format(java.util.Locale.US, "%.1fK", v / 1_000.0)
+        else -> v.toString()
+    }
+
+    private fun deltaText(cur: Double, prev: Double): String {
+        if (prev <= 0.0 && cur <= 0.0) return "—"
+        if (prev <= 0.0) return "▲ 新增"
+        val p = (cur - prev) / prev * 100.0
+        val arrow = if (p >= 0) "▲" else "▼"
+        return "$arrow ${String.format(java.util.Locale.US, "%.1f", kotlin.math.abs(p))}%"
+    }
+
+    private fun renderStats() {
+        val grid = findViewById<LinearLayout>(R.id.statsGrid) ?: return
+        renderFilters()
+        val (since, prevSince) = rangeWindow(selectedRange)
+        val summary = com.workbuddy.proxy.core.UsageStore.summary(
+            selectedKeyLabel, since, prevSince
+        )
+        grid.removeAllViews()
+
+        val tokenColor = android.graphics.Color.parseColor("#F5A623")
+        val reqColor = android.graphics.Color.parseColor("#7E57C2")
+        val speedColor = android.graphics.Color.parseColor("#4FC3F7")
+        val cacheColor = android.graphics.Color.parseColor("#9575CD")
+        val costColor = android.graphics.Color.parseColor("#EF5350")
+        val okColor = android.graphics.Color.parseColor("#2E7D32")
+
+        // 第一行：TOKEN 消耗 / 请求数
+        grid.addView(
+            statRow(
+                buildStatCard(
+                    "◆", tokenColor, "TOKEN 消耗",
+                    fmtCompact(summary.totalTokens),
+                    deltaText(summary.totalTokens.toDouble(), summary.prevTokens.toDouble()),
+                    listOf(
+                        "输入 ${fmtCompact(summary.promptTokens)} · 输出 ${fmtCompact(summary.completionTokens)}",
+                        "思考 ${fmtCompact(summary.reasoningTokens)} · 缓存 ${fmtCompact(summary.cachedTokens)}"
+                    ),
+                    summary.tokenSeries, tokenColor
+                ),
+                buildStatCard(
+                    "⇅", reqColor, "请求数",
+                    "${summary.requests} 次",
+                    deltaText(summary.requests.toDouble(), summary.prevRequests.toDouble()),
+                    listOf(
+                        "失败 ${summary.failed} · 成功率 ${String.format(java.util.Locale.US, "%.1f", summary.successRate)}%",
+                        "平均耗时 ${summary.avgLatencyMs / 1000.0}s"
+                    ),
+                    summary.requestSeries, reqColor
+                )
+            )
+        )
+
+        // 第二行：生成速度 / 缓存命中率
+        grid.addView(
+            statRow(
+                buildStatCard(
+                    "⚡", speedColor, "生成速度",
+                    "${String.format(java.util.Locale.US, "%.1f", summary.avgTokPerSec)} tok/s",
+                    deltaText(summary.avgTokPerSec, summary.prevSpeed),
+                    listOf(
+                        "平均耗时 ${summary.avgLatencyMs / 1000.0} s · 首字 ${summary.avgTtftMs / 1000.0} s",
+                        "峰值 ${String.format(java.util.Locale.US, "%.0f", summary.peakTokPerSec)} tok/s · p90 首字 ${summary.p90TtftMs / 1000.0} s"
+                    ),
+                    summary.speedSeries, speedColor
+                ),
+                buildStatCard(
+                    "⟳", cacheColor, "缓存命中率",
+                    "${String.format(java.util.Locale.US, "%.1f", summary.cacheHitRate)}%",
+                    deltaText(summary.cacheHitRate, summary.prevCacheRate),
+                    listOf("缓存复用 ${fmtCompact(summary.cachedTokens)} tokens"),
+                    summary.cacheSeries, cacheColor
+                )
+            )
+        )
+
+        // 第三行：成功率整行拉长
+        val okCard = buildRingCardWide(
+            summary.successRate.toFloat(), okColor,
+            summary.requests, summary.failed,
+            deltaText(summary.successRate, 100.0)
+        )
+        val okLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(CARD_H)
+        )
+        okLp.bottomMargin = dp(8)
+        okCard.layoutParams = okLp
+        grid.addView(okCard)
+
+    }
+
+    private val RANGE_NAMES = listOf("今天", "近三天", "本周", "本月", "近30天", "全部")
+
+    private fun renderFilters() {
+        val keyDd = findViewById<TextView>(R.id.keyDropdown) ?: return
+        val timeDd = findViewById<TextView>(R.id.timeDropdown) ?: return
+        val keys = com.workbuddy.proxy.core.UsageStore.knownKeys()
+        if (selectedKeyLabel != null && keys.none { it == selectedKeyLabel }) {
+            selectedKeyLabel = null
+        }
+        keyDd.text = selectedKeyLabel ?: "全部 Key"
+        timeDd.text = RANGE_NAMES[selectedRange]
+    }
+
+    private fun showKeyPicker() {
+        val keys = com.workbuddy.proxy.core.UsageStore.knownKeys()
+        val items = arrayOf("全部 Key") + keys.toTypedArray()
+        val checked = if (selectedKeyLabel == null) 0 else keys.indexOf(selectedKeyLabel) + 1
+        AlertDialog.Builder(this)
+            .setTitle("按 API Key 筛选")
+            .setSingleChoiceItems(items, checked.coerceAtLeast(0)) { dialog, which ->
+                selectedKeyLabel = if (which == 0) null else keys[which - 1]
+                dialog.dismiss()
+                renderStats()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun showTimePicker() {
+        AlertDialog.Builder(this)
+            .setTitle("时间范围")
+            .setSingleChoiceItems(RANGE_NAMES.toTypedArray(), selectedRange) { dialog, which ->
+                selectedRange = which
+                dialog.dismiss()
+                renderStats()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    /** 返回 (窗口起点, 上一个等长窗口起点)。 */
+    private fun rangeWindow(range: Int): Pair<Long, Long> {
+        val now = System.currentTimeMillis()
+        val day = 86_400_000L
+        val cal0 = java.util.Calendar.getInstance().apply {
+            timeInMillis = now
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val todayStart = cal0.timeInMillis
+
+        val since = when (range) {
+            0 -> todayStart
+            1 -> todayStart - 2 * day
+            2 -> {
+                val c = java.util.Calendar.getInstance().apply { timeInMillis = todayStart }
+                val dow = c.get(java.util.Calendar.DAY_OF_WEEK) // 周日=1 … 周六=7
+                val offset = (dow + 5) % 7                       // 周一=0
+                todayStart - offset * day
+            }
+            3 -> {
+                val c = java.util.Calendar.getInstance().apply { timeInMillis = todayStart }
+                c.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                c.timeInMillis
+            }
+            4 -> todayStart - 29 * day
+            else -> 0L
+        }
+        val span = (now - since).coerceAtLeast(day)
+        return since to (since - span).coerceAtLeast(0L)
+    }
+
+    private fun statRow(left: View, right: View): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.bottomMargin = dp(8)
+            layoutParams = lp
+        }
+        val l = LinearLayout.LayoutParams(0, dp(CARD_H), 1f)
+        val r = LinearLayout.LayoutParams(0, dp(CARD_H), 1f)
+        r.marginStart = dp(8)
+        row.addView(left, l)
+        row.addView(right, r)
+        return row
+    }
+
+    private fun buildStatCard(
+        icon: String,
+        iconColor: Int,
+        title: String,
+        value: String,
+        delta: String,
+        lines: List<String>,
+        series: List<Float>,
+        seriesColor: Int
+    ): View {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bg_card)
+            setPadding(dp(11), dp(10), dp(11), dp(8))
+        }
+
+        val head = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        head.addView(TextView(this).apply {
+            text = icon
+            setTextColor(iconColor)
+            textSize = 11f
+            setPadding(0, 0, dp(4), 0)
+        })
+        head.addView(TextView(this).apply {
+            text = title
+            setTextColor(getColor(R.color.dim))
+            textSize = 10.5f
+        })
+        card.addView(head)
+
+        card.addView(TextView(this).apply {
+            text = value
+            setTextColor(getColor(R.color.text))
+            textSize = 19f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, dp(3), 0, 0)
+        })
+
+        card.addView(TextView(this).apply {
+            text = delta
+            setTextColor(getColor(R.color.dim))
+            textSize = 10f
+            setPadding(0, dp(1), 0, 0)
+        })
+
+        for (line in lines) {
+            card.addView(TextView(this).apply {
+                text = line
+                setTextColor(getColor(R.color.dim))
+                textSize = 9.5f
+                setPadding(0, dp(1), 0, 0)
+            })
+        }
+
+        // 占位撑开，让折线始终贴底，五张卡高度一致时底部对齐
+        card.addView(View(this), LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+        ))
+
+        card.addView(com.workbuddy.proxy.ui.SparklineView(this).apply {
+            setData(series, seriesColor)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)
+            ).apply { topMargin = dp(4) }
+        })
+
+        return card
+    }
+
+    /** 整行宽的成功率卡：左环形、右文字，横向铺满。 */
+    private fun buildRingCardWide(
+        percent: Float,
+        color: Int,
+        requests: Int,
+        failed: Int,
+        delta: String
+    ): View {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundResource(R.drawable.bg_card)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        card.addView(com.workbuddy.proxy.ui.RingProgressView(this).apply {
+            setPercent(percent, color)
+            layoutParams = LinearLayout.LayoutParams(dp(96), dp(96))
+        })
+
+        val info = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), 0, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        info.addView(TextView(this).apply {
+            text = "✓  请求成功率"
+            setTextColor(getColor(R.color.dim))
+            textSize = 10.5f
+        })
+        info.addView(TextView(this).apply {
+            text = "${String.format(java.util.Locale.US, "%.1f", percent)}%"
+            setTextColor(getColor(R.color.text))
+            textSize = 22f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, dp(2), 0, 0)
+        })
+        info.addView(TextView(this).apply {
+            text = "$delta  较昨日"
+            setTextColor(getColor(R.color.dim))
+            textSize = 10f
+            setPadding(0, dp(1), 0, 0)
+        })
+        info.addView(TextView(this).apply {
+            text = "共 $requests 次 · 失败 $failed 次"
+            setTextColor(getColor(R.color.dim))
+            textSize = 10f
+            setPadding(0, dp(1), 0, 0)
+        })
+        card.addView(info)
+
+        return card
     }
 
     // ------------------------------------------------------------ API Key
@@ -1089,7 +1451,9 @@ class MainActivity : WbActivity() {
         val running = ProxyService.running
         statusText.text = if (running) "服务运行中" else "服务已停止"
         statusDot.setBackgroundResource(if (running) R.drawable.dot_on else R.drawable.dot_idle)
-        btnToggle.text = if (running) "停止服务" else "启动服务"
+        if (btnToggle.isEnabled) {
+            btnToggle.text = if (running) "停止服务" else "启动服务"
+        }
 
         val port = if (ProxyService.activePort > 0) ProxyService.activePort else Prefs.port
         val lan = Router.lanIp()
@@ -1106,12 +1470,12 @@ class MainActivity : WbActivity() {
         val vn = runCatching {
             packageManager.getPackageInfo(packageName, 0).versionName
         }.getOrNull() ?: "?"
-        findViewById<TextView>(R.id.versionText).text =
-            "v$vn · Android ${Build.VERSION.RELEASE} · 账号池 ${AccountStore.size()}"
+        findViewById<TextView>(R.id.versionText).text = "v$vn"
 
         renderAccounts()
         renderLogs()
         renderConsole()
+        if (currentTab == TAB_DATA) renderStats()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -1146,6 +1510,7 @@ class MainActivity : WbActivity() {
         private const val TAB_PROXY = 0
         private const val TAB_API = 1
         private const val TAB_CONSOLE = 2
-        private const val TAB_MINE = 3
+        private const val TAB_DATA = 3
+        private const val TAB_MINE = 4
     }
 }

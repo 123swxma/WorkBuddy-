@@ -69,9 +69,9 @@ object Router {
         }
         val realm = key.realm
         when (req.path) {
-            "/v1/chat/completions" -> if (requirePost(req)) ProxyEngine.handleChat(req, realm)
+            "/v1/chat/completions" -> if (requirePost(req)) ProxyEngine.handleChat(req, realm, key.label)
             "/v1/models" -> ProxyEngine.handleModels(req, realm)
-            "/v1/messages" -> if (requirePost(req)) AnthropicRpc.handleMessages(req, realm)
+            "/v1/messages" -> if (requirePost(req)) AnthropicRpc.handleMessages(req, realm, key.label)
             "/v1/messages/count_tokens" -> if (requirePost(req)) AnthropicRpc.handleCountTokens(req)
             "/v1/completions" -> req.sendError(
                 400,
@@ -437,7 +437,7 @@ object Router {
             .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", "ping")))
         val bytes = ProxyEngine.buildUpstreamBody(payload).toString().toByteArray(Charsets.UTF_8)
         // 上游只吃流式，这里由 complete() 内部开流再聚合
-        val result = ProxyEngine.complete(bytes, model)
+        val result = ProxyEngine.complete(bytes, model, null, "链路测试")
         val body = result.body
         if (body == null) {
             req.sendJson(

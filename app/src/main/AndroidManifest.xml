@@ -41,12 +41,6 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:label="@string/settings_title" />
 
-        <activity
-            android:name=".ConsoleActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:label="@string/console_title" />
-
         <service
             android:name=".ProxyService"
             android:exported="false"
