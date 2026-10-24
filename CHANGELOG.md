@@ -21,6 +21,7 @@
 ### Changed
 
 - 优化了一些功能
-- 
-[Unreleased]: https://github.com/123swxma/WorkBuddy-/compare/v1.9.1...HEAD
+
+[Unreleased]: https://github.com/123swxma/WorkBuddy-/compare/v1.9.2...HEAD
+[1.9.2]: https://github.com/123swxma/WorkBuddy-/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/123swxma/WorkBuddy-/compare/v1.9.0...v1.9.1

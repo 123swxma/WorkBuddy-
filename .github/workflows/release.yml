@@ -86,21 +86,35 @@ jobs:
           cd out
           sha256sum *.apk | tee SHA256SUMS.txt
 
+      # 说明正文直接取 CHANGELOG 里当前版本的段落，避免每版手改工作流、也避免签名描述写错
+      - name: Compose release notes
+        run: |
+          VERSION="${{ steps.ver.outputs.name }}"
+          {
+            echo "安装包：\`WorkBuddyProxy-${VERSION}.apk\`"
+            echo ""
+            echo "- versionName: \`${VERSION}\`"
+            echo "- versionCode: \`${{ steps.ver.outputs.code }}\`"
+            echo "- 校验：\`sha256sum -c SHA256SUMS.txt\`"
+            echo ""
+            awk -v v="$VERSION" '
+              index($0, "## [" v "]") == 1 { f = 1; next }
+              f && index($0, "## [") == 1 { exit }
+              f { if (!seen && $0 == "") next; seen = 1; print }
+            ' CHANGELOG.md
+            echo ""
+            echo "完整变更见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。"
+          } > release-notes.md
+          echo "----- release-notes.md -----"
+          cat release-notes.md
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: WorkBuddyProxy ${{ steps.ver.outputs.name }}
           draft: false
-          generate_release_notes: true
+          body_path: release-notes.md
           files: |
             out/*.apk
             out/SHA256SUMS.txt
-          body: |
-            安装包：`WorkBuddyProxy-${{ steps.ver.outputs.name }}.apk`（debug 签名，可直接侧载）
-
-            - versionName: `${{ steps.ver.outputs.name }}`
-            - versionCode: `${{ steps.ver.outputs.code }}`
-            - 校验：`sha256sum -c SHA256SUMS.txt`
-
-            完整变更见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。
